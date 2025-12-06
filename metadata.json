@@ -1,0 +1,7 @@
+{
+  "name": "Adobe Acrobat",
+  "description": "Upload a PDF and ask questions about its content. An AI assistant, powered by Gemini, will provide answers based on the document.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

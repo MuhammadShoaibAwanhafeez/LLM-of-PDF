@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Document Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      /* Apply Noto Naskh Arabic for elements with RTL/Urdu content for better rendering */
+      .prose[dir="auto"], .prose[dir="rtl"] {
+        font-family: 'Noto Naskh Arabic', 'Inter', sans-serif;
+        line-height: 2.4; /* Increased line-height for better spacing */
+        font-size: 1.15rem; 
+        font-weight: 600; /* Made slightly bolder as requested */
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.7s ease-in-out forwards;
+      }
+      @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+      }
+      .shimmer-loader::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        animation: shimmer 1.5s infinite ease-in-out;
+      }
+      [contenteditable][placeholder]:empty:before {
+        content: attr(placeholder);
+        pointer-events: none;
+        display: block; /* For line-break */
+        color: #9ca3af; /* gray-400 */
+      }
+      .dark [contenteditable][placeholder]:empty:before {
+        color: #6b7280; /* gray-500 */
+      }
+      /* Tree styles */
+      .tree ul {
+        position: relative;
+        padding-left: 20px;
+        list-style: none;
+      }
+      .tree li {
+        position: relative;
+        padding-top: 4px;
+      }
+      .tree li::before, .tree li::after {
+        content: '';
+        position: absolute;
+        left: -12px;
+        border-color: #d1d5db; /* gray-300 */
+      }
+      .dark .tree li::before, .dark .tree li::after {
+        border-color: #4b5563; /* gray-600 */
+      }
+      .tree li::before { /* Horizontal line */
+        border-top: 1px solid;
+        top: 14px;
+        width: 8px;
+        height: 0;
+      }
+      .tree li::after { /* Vertical line */
+        border-left: 1px solid;
+        height: 100%;
+        width: 0px;
+        top: -7px;
+      }
+      .tree ul > li:last-child::after {
+        height: 21px; /* Shorten vertical line for last item */
+      }
+      .tree li span {
+        display: inline-block;
+        padding: 2px 5px;
+        border-radius: 4px;
+      }
+      /* Chart styles */
+      .chart-container {
+        margin: 1em 0;
+        min-width: 250px;
+      }
+      .chart-container .bar-group rect {
+          fill: #3b82f6; /* blue-500 */
+          transition: opacity 0.2s;
+      }
+      .chart-container .bar-group:hover rect {
+        opacity: 0.8;
+      }
+      .chart-container text {
+        font-size: 11px;
+        fill: #4b5563; /* gray-600 */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      .dark .chart-container text {
+          fill: #d1d5db; /* gray-300 */
+      }
+      .chart-container .bar-value {
+        text-anchor: middle;
+      }
+      .chart-container .bar-label {
+        text-anchor: middle;
+      }
+      /* Custom prose styles for better rendering */
+      .prose table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1em;
+        margin-bottom: 1em;
+        table-layout: auto;
+      }
+      .prose th, .prose td {
+        border: 1px solid #e5e7eb; /* gray-200 */
+        padding: 0.5em 1em;
+        word-wrap: break-word;
+      }
+      .prose th {
+        background-color: #f9fafb; /* gray-50 */
+        font-weight: 600;
+      }
+      .dark .prose th, .dark .prose td {
+        border-color: #4b5563; /* gray-600 */
+      }
+      .dark .prose th {
+        background-color: #374151; /* gray-700 */
+      }
+      .prose blockquote {
+        border-left: 4px solid #d1d5db; /* gray-300 */
+        padding-left: 1em;
+        margin-left: 0;
+        margin-right: 0;
+        font-style: italic;
+        color: #4b5563; /* gray-600 */
+      }
+      .dark .prose blockquote {
+        border-left-color: #4b5563; /* gray-600 */
+        color: #d1d5db; /* gray-300 */
+      }
+      .prose pre {
+        background-color: #f3f4f6; /* gray-100 */
+        border-radius: 0.5rem;
+        padding: 1em;
+        overflow-x: auto;
+        font-family: monospace;
+        font-size: 0.9em;
+        line-height: 1.5;
+      }
+      .dark .prose pre {
+        background-color: #1f2937; /* gray-800 */
+      }
+      .prose code {
+        background-color: #e5e7eb; /* gray-200 */
+        border-radius: 0.25rem;
+        padding: 0.2em 0.4em;
+        font-size: 85%;
+        font-family: monospace;
+      }
+      /* Don't style code within pre blocks, it inherits from pre */
+      .prose pre code {
+        background-color: transparent;
+        padding: 0;
+        border-radius: 0;
+        font-size: inherit;
+      }
+      .dark .prose code {
+        background-color: #4b5563; /* gray-600 */
+      }
+      .dark .prose pre code {
+        background-color: transparent;
+      }
+      .prose a {
+        color: #2563eb; /* blue-600 */
+        text-decoration: none;
+        font-weight: 500;
+        border-bottom: 1px solid #93c5fd; /* blue-300 */
+      }
+      .prose a:hover {
+        color: #1d4ed8; /* blue-700 */
+        border-bottom-color: #1d4ed8;
+      }
+      .dark .prose a {
+        color: #60a5fa; /* blue-400 */
+        border-bottom-color: #3b82f6; /* blue-500 */
+      }
+      .dark .prose a:hover {
+        color: #93c5fd; /* blue-300 */
+        border-bottom-color: #60a5fa; /* blue-400 */
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "pdfjs-dist": "https://aistudiocdn.com/pdfjs-dist@4.4.168/build/pdf.min.mjs",
+    "jspdf": "https://aistudiocdn.com/jspdf@2.5.1",
+    "html2canvas": "https://aistudiocdn.com/html2canvas@1.4.1",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "mammoth": "https://cdn.jsdelivr.net/npm/mammoth@1.7.2/mammoth.browser.min.js",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "react-markdown": "https://aistudiocdn.com/react-markdown@^10.1.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="font-sans">
+<div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
